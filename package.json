@@ -15,6 +15,10 @@
   "author": "Зореслава bc2025-5",
   "license": "ISC",
   "dependencies": {
-    "commander": "^14.0.2"
+    "commander": "^14.0.2",
+    "superagent": "^10.2.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
   }
 }
