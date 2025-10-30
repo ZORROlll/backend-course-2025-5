@@ -37,6 +37,7 @@ async function startServer() {
   });
 }
 
+
 startServer().catch(error => {
   console.error('Помилка при запуску сервера:', error);
   process.exit(1);
