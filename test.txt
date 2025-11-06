@@ -1,1 +1,2 @@
 curl -v http://localhost:3000/200 -- GET - отримання картинки (200 OK + Content-Type: image/jpeg)
+curl -v -X PUT http://localhost:3000/200 -d "test_data" -- PUT - створення картинки (201 Created)
