@@ -1,0 +1,1 @@
+curl -v http://localhost:3000/200 -- GET - отримання картинки (200 OK + Content-Type: image/jpeg)
