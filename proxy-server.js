@@ -1,8 +1,8 @@
 const fs = require('fs').promises;
 const path = require('path');
 const http = require('http');
-const https = require('https');
 const { program } = require('commander');
+const superagent = require('superagent');
 
 program
   .requiredOption('-h, --host <host>', 'Адреса сервера')
@@ -29,64 +29,50 @@ async function handleGet(req, res, httpCode) {
   const filePath = getCacheFilePath(httpCode);
 
   try {
-    // Перевіряємо, чи є файл у кеші
     const data = await fs.readFile(filePath);
     console.log(`Віддаю з кешу: ${filePath}`);
     res.writeHead(200, { 'Content-Type': 'image/jpeg' });
     res.end(data);
   } catch {
-    // Якщо немає — завантажуємо з http.cat
     const url = `https://http.cat/${httpCode}.jpg`;
     console.log(`Кешу немає — завантажую з ${url}`);
 
-    https.get(url, async (response) => {
-      if (response.statusCode === 200) {
-        const chunks = [];
-        response.on('data', (chunk) => chunks.push(chunk));
-        response.on('end', async () => {
-          const buffer = Buffer.concat(chunks);
-          await fs.writeFile(filePath, buffer); // зберігаємо в кеш
-          console.log(`Картинку збережено: ${filePath}`);
-          res.writeHead(200, { 'Content-Type': 'image/jpeg' });
-          res.end(buffer);
-        });
-      } else {
-        res.writeHead(404, { 'Content-Type': 'text/plain' });
-        res.end(`Картинку для коду ${httpCode} не знайдено 😿`);
-      }
-    }).on('error', (err) => {
-      console.error('Помилка завантаження:', err);
-      res.writeHead(500, { 'Content-Type': 'text/plain' });
-      res.end('Помилка при завантаженні картинки');
-    });
+    try {
+      const response = await superagent.get(url).buffer(true).parse(superagent.parse.image);
+      await fs.writeFile(filePath, response.body);
+      console.log(`Картинку збережено: ${filePath}`);
+      res.writeHead(200, { 'Content-Type': 'image/jpeg' });
+      res.end(response.body);
+    } catch (error) {
+      console.error('Помилка завантаження:', error.message);
+      res.writeHead(404, { 'Content-Type': 'text/plain' });
+      res.end(`Картинку для коду ${httpCode} не знайдено`);
+    }
   }
 }
 
 async function handlePut(req, res, httpCode) {
   const filePath = getCacheFilePath(httpCode);
-  const chunks = [];
+  let chunks = [];
 
-  req.on('data', (chunk) => chunks.push(chunk));
-  req.on('end', async () => {
-    const buffer = Buffer.concat(chunks);
-    
-    let fileExists = false;
-    try {
-      await fs.access(filePath);
-      fileExists = true;
-    } catch {
-    }
-    
-    await fs.writeFile(filePath, buffer);
-  
-    if (fileExists) {
-      res.writeHead(200, { 'Content-Type': 'text/plain' });
-      res.end(`Картинку для коду ${httpCode} оновлено вручну`);
-    } else {
-      res.writeHead(201, { 'Content-Type': 'text/plain' });
-      res.end(`Картинку для коду ${httpCode} створено вручну`);
-    }
-  });
+  for await (const chunk of req) {
+    chunks.push(chunk);
+  }
+  const buffer = Buffer.concat(chunks);
+
+  let existed = true;
+  try {
+    await fs.access(filePath);
+  } catch {
+    existed = false;
+  }
+
+  await fs.writeFile(filePath, buffer);
+
+  res.writeHead(existed ? 200 : 201, { 'Content-Type': 'text/plain' });
+  res.end(existed
+    ? `Картинку для коду ${httpCode} оновлено вручну`
+    : `Картинку для коду ${httpCode} створено вручну`);
 }
 
 async function handleDelete(req, res, httpCode) {
@@ -107,7 +93,7 @@ async function startServer() {
   const server = http.createServer(async (req, res) => {
     const httpCode = req.url.slice(1);
 
-    if (!/^\d+$/.test(httpCode)) {
+    if (!httpCode || !/^\d+$/.test(httpCode)) {
       res.writeHead(400, { 'Content-Type': 'text/plain' });
       return res.end('Некоректний HTTP код');
     }
