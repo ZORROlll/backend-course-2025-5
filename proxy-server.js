@@ -38,9 +38,9 @@ async function handleGet(req, res, httpCode) { // функція яка прий
     console.log(`Кешу немає — завантажую з ${url}`);
 
     try {
-      const response = await superagent.get(url).buffer(true).parse(superagent.parse.image);
+      const response = await superagent.get(url).buffer(true).parse(superagent.parse.image); //збирає в буфер, розпізнає дані як зображ.
       await fs.writeFile(filePath, response.body);
-      console.log(`Картинку збережено: ${filePath}`);
+      console.log(`Картинку збережено: ${filePath}`); //${filePath} це шаблонний рядок, підставляє знач. змін у текст filePath
       res.writeHead(200, { 'Content-Type': 'image/jpeg' });
       res.end(response.body);
     } catch (error) {
@@ -60,7 +60,7 @@ async function handlePut(req, res, httpCode) {
   }
   const buffer = Buffer.concat(chunks);
 
-  let existed = true;
+  let existed = true; //запам'ятовує чи існує файл за певним шляхом
   try {
     await fs.access(filePath);
   } catch {
@@ -88,17 +88,17 @@ async function handleDelete(req, res, httpCode) {
 }
 
 async function startServer() {
-  await ensureCacheDir();
+  await ensureCacheDir(); // чекає заверш. ф. яка перевіряє або створює директорію кешу 
 
   const server = http.createServer(async (req, res) => {
-    const httpCode = req.url.slice(1);
+    const httpCode = req.url.slice(1); // вирізає з url / частину, що вважається HTTP-кодо
 
-    if (!httpCode || !/^\d+$/.test(httpCode)) {
+    if (!httpCode || !/^\d+$/.test(httpCode)) { // перевіряє, чи httpCode існує і чи складається тільки з цифр
       res.writeHead(400, { 'Content-Type': 'text/plain' });
       return res.end('Некоректний HTTP код');
     }
 
-    switch (req.method) {
+    switch (req.method) { // виконує код залежно від запиту
       case 'GET':
         await handleGet(req, res, httpCode);
         break;
@@ -108,15 +108,15 @@ async function startServer() {
       case 'DELETE':
         await handleDelete(req, res, httpCode);
         break;
-      default:
+      default: // якщо метод не співпадає з жодним із перелічених 
         res.writeHead(405, { 'Content-Type': 'text/plain' });
         res.end('Метод не підтримується');
     }
   });
 
-  server.listen(options.port, options.host, () => {
+  server.listen(options.port, options.host, () => { //колбек: це функція яку виконає сервер коли запуститься 
     console.log(`Проксі-сервер запущено на ${options.host}:${options.port}`);
-    console.log(`Кеш-директорія: ${path.resolve(options.cache)}`);
+    console.log(`Кеш-директорія: ${path.resolve(options.cache)}`); //виводить повний абсолютний шлях до директорії 
   });
 }
 
