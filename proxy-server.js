@@ -1,22 +1,22 @@
 const fs = require('fs').promises;
 const path = require('path');
 const http = require('http');
-const { program } = require('commander');
+const { program } = require('commander'); // візьме тільки змінну program
 const superagent = require('superagent');
 
 program
   .requiredOption('-h, --host <host>', 'Адреса сервера')
   .requiredOption('-p, --port <port>', 'Порт сервера', Number)
   .requiredOption('-c, --cache <cache>', 'Шлях до директорії кешу')
-  .parse(process.argv);
+  .parse(process.argv); 
 
-const options = program.opts();
+const options = program.opts(); // зберігаються значення параметрів
 
 async function ensureCacheDir() {
   try {
     await fs.access(options.cache);
   } catch {
-    await fs.mkdir(options.cache, { recursive: true });
+    await fs.mkdir(options.cache, { recursive: true }); // recursive: true означає створння усіх вкладені папки, якщо треба
     console.log(`Створено директорію кешу: ${options.cache}`);
   }
 }
@@ -25,7 +25,7 @@ function getCacheFilePath(httpCode) {
   return path.join(options.cache, `${httpCode}.jpg`);
 }
 
-async function handleGet(req, res, httpCode) {
+async function handleGet(req, res, httpCode) { // функція яка приймає число
   const filePath = getCacheFilePath(httpCode);
 
   try {
@@ -34,7 +34,7 @@ async function handleGet(req, res, httpCode) {
     res.writeHead(200, { 'Content-Type': 'image/jpeg' });
     res.end(data);
   } catch {
-    const url = `https://http.cat/${httpCode}.jpg`;
+    const url = `https://http.cat/${httpCode}.jpg`; // створюється посилання
     console.log(`Кешу немає — завантажую з ${url}`);
 
     try {
